@@ -1828,6 +1828,9 @@
   <!-- From PinyinIME(!!!) -->
   <java-symbol type="string" name="inputMethod" />
 
+  <!-- Config.xml entries -->
+  <java-symbol type="integer" name="config_backKillTimeout" />
+
   <!-- Hardware Key ReMapping -->
   <java-symbol type="integer" name="config_deviceHardwareKeys" />
 
@@ -1889,6 +1892,9 @@
   <java-symbol type="string" name="minutes" />
   <java-symbol type="string" name="second" />
   <java-symbol type="string" name="seconds" />
+
+  <!-- Developer settings - Kill app back press -->
+  <java-symbol type="string" name="app_killed_message" />
 
   <!-- Expanded desktop default set -->
   <java-symbol type="string" name="expanded_mode_default_set" />
