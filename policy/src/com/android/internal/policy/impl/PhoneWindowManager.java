@@ -390,6 +390,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     boolean mVolBtnMusicControls;
     boolean mIsLongPress;
 
+    // Behavior expanded desktop mode
+    int mExpandedState;
+
     // HW overlays state
     int mDisableOverlays = 0;
 
@@ -664,7 +667,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     "fancy_rotation_anim"), false, this,
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.EXPANDED_DESKTOP_STATE), false, this);
+                    Settings.System.EXPANDED_DESKTOP_STATE), false, this,
+                    UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.KEY_HOME_ACTION), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
@@ -915,7 +919,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                         if (appInfo.pkgList != null && (appInfo.pkgList.length > 0)) {
                             for (String pkg : appInfo.pkgList) {
                                 if (!pkg.equals("com.android.systemui") && !pkg.equals(defaultHomePackage)) {
-                                    am.forceStopPackage(pkg);
+                                    am.forceStopPackage(pkg, UserHandle.USER_CURRENT);
                                     targetKilled = true;
                                     break;
                                 }
@@ -1026,34 +1030,17 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     try {
                         IStatusBarService statusbar = getStatusBarService();
                         if (statusbar != null) {
-                            statusbar.toggleNotificationShade();
+                            statusbar.expandNotificationsPanel();
                         }
                     } catch (RemoteException e) {
-                        Slog.e(TAG, "RemoteException when toggling notification shade", e);
+                        Slog.e(TAG, "RemoteException when toggling notifications", e);
                         mStatusBarService = null;
                     }
                     break;
                 case KEY_ACTION_EXPANDED:
-                    boolean expandDesktopModeOn = Settings.System.getInt(
-                            mContext.getContentResolver(),
-                            Settings.System.EXPANDED_DESKTOP_STATE, 0) == 1;
-                    int expandedMode = Settings.System.getInt(mContext.getContentResolver(),
-                            Settings.System.EXPANDED_DESKTOP_MODE, 0);
-                    if (!expandDesktopModeOn && expandedMode == 0) {
-                        // Expanded desktop is going to turn on, default to 2 since
-                        // EXPANDED_DESKTOP_MODE has not been set
-                        Settings.System.putInt(mContext.getContentResolver(),
-                            Settings.System.EXPANDED_DESKTOP_MODE, 2);
-                        Runnable expandedDesktopToast = new Runnable() {
-                            public void run() {
-                                Toast.makeText(mContext, R.string.expanded_mode_default_set, Toast.LENGTH_LONG).show();
-                            }
-                        };
-                        mHandler.post(expandedDesktopToast);
-                    }
                     Settings.System.putInt(
                             mContext.getContentResolver(),
-                            Settings.System.EXPANDED_DESKTOP_STATE, expandDesktopModeOn ? 0 : 1);
+                            Settings.System.EXPANDED_DESKTOP_STATE, mExpandedState == 1 ? 0 : 1);
                     break;
                 default:
                     break;
@@ -1410,6 +1397,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
     public void updateSettings() {
         ContentResolver resolver = mContext.getContentResolver();
+
+        mExpandedState = Settings.System.getInt(mContext.getContentResolver(),
+                                Settings.System.EXPANDED_DESKTOP_STATE, 0);
+
         boolean updateRotation = false;
         synchronized (mLock) {
             mEndcallBehavior = Settings.System.getIntForUser(resolver,
@@ -2342,10 +2333,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
         }
 
-        if (keyCode == KeyEvent.KEYCODE_BACK && !down) {
-            mHandler.removeCallbacks(mBackLongPress);
-        }
-
         // First we always handle the home key here, so applications
         // can never break it, although if keyguard is on, we do let
         // it handle it, because that gives us the correct 5 second
@@ -2424,6 +2411,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 }
                 if (repeatCount == 0) {
                     mHomePressed = true;
+                    mHomeLongPressed = false;
                 } else if (longPress) {
                     if (!keyguardOn && !mLongPressOnHomeBehavior.equals(getStr(KEY_ACTION_NOTHING))) {
                         performHapticFeedbackLw(null, HapticFeedbackConstants.LONG_PRESS, false);
