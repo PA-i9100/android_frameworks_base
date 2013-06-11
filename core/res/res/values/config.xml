@@ -1082,9 +1082,6 @@
     <!-- If this value is true, we handle Samsung CDMA's message ID method -->
     <bool name="config_smsSamsungCdmaAlternateMessageIDEncoding">false</bool>
 
-    <!-- Disable the home key unlock setting -->
-    <bool name="config_disableHomeUnlockSetting">true</bool>
-
     <!-- The list absolute paths of jar/apk files containing the device specific handlers,
          delimited by File.pathSeparator, which defaults to ":" on Android -->
     <string name="config_deviceHandlersLib" translatable="false"></string>
