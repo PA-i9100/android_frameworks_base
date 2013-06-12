@@ -77,7 +77,7 @@
             android:layout_height="match_parent"
             android:orientation="horizontal">
 
-            <LinearLayout android:id="@+id/statusIcons"
+           <LinearLayout android:id="@+id/statusIcons"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
@@ -127,19 +127,19 @@
                     android:paddingLeft="@dimen/status_bar_battery_cluster_padding"
                     />
             </LinearLayout>
-    
+
             <com.android.systemui.statusbar.policy.Clock
                 android:id="@+id/clock"
                 android:textAppearance="@style/TextAppearance.StatusBar.Clock"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:singleLine="true"
-                android:paddingLeft="1dip"
+                android:paddingLeft="6dip"
                 android:gravity="center_vertical|left"
                 />
         </LinearLayout>
     </LinearLayout>
-        
+
     <LinearLayout android:id="@+id/ticker"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
