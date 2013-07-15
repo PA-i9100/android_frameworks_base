@@ -1101,4 +1101,7 @@
          kill the foreground app. -->
     <integer name="config_backKillTimeout">2000</integer>
 
+    <!-- Boolean to enable Stylus gestures -->
+    <bool name="config_stylusGestures">false</bool>
+
 </resources>
