@@ -2319,6 +2319,14 @@ public final class Settings {
         public static final String POINTER_LOCATION = "pointer_location";
 
         /**
+         * Show icon when stylus is used?
+         * 0 = no
+         * 1 = yes
+         * @hide
+         */
+        public static final String STYLUS_ICON_ENABLED = "stylus_icon_enabled";
+
+        /**
          * Show touch positions on screen?
          * 0 = no
          * 1 = yes
@@ -2592,6 +2600,12 @@ public final class Settings {
          * @hide
          */
         public static final String HALO_HIDE = "halo_hide";
+
+        /**
+         * HALO size fraction, default is 1.0f (normal)
+         * @hide
+         */
+        public static final String HALO_SIZE = "halo_size";
 
         /**
          * HALO pause activities?, defaults to 0 (no, do not pause) on devices which isLargeRAM() == true

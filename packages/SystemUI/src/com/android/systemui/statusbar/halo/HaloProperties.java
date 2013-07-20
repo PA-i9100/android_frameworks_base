@@ -17,14 +17,21 @@
 package com.android.systemui.statusbar.halo;
 
 import android.content.Context;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.RelativeLayout;
+import android.widget.LinearLayout;
 import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
+import android.util.TypedValue;
+import android.provider.Settings;
 
 import com.android.systemui.R;
 
@@ -54,13 +61,17 @@ public class HaloProperties extends FrameLayout {
     private Drawable mHaloCurrentOverlay;
 
     protected View mHaloBubble;
-    protected ImageView mHaloIcon, mHaloOverlay;
+    protected ImageView mHaloBg, mHaloIcon, mHaloOverlay;
 
     protected View mHaloContentView, mHaloTickerContent;
     protected TextView mHaloTextViewR, mHaloTextViewL;
+    protected RelativeLayout mHaloTickerContainer;
 
     protected View mHaloNumberView;
     protected TextView mHaloNumber;
+
+    private float mFraction = 1.0f;
+    private int mHaloMessageNumber = 0;
 
     CustomObjectAnimator mHaloOverlayAnimator;
 
@@ -77,10 +88,12 @@ public class HaloProperties extends FrameLayout {
         mInflater = (LayoutInflater)mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
         mHaloBubble = mInflater.inflate(R.layout.halo_bubble, null);
+        mHaloBg = (ImageView) mHaloBubble.findViewById(R.id.halo_bg);
         mHaloIcon = (ImageView) mHaloBubble.findViewById(R.id.app_icon);
         mHaloOverlay = (ImageView) mHaloBubble.findViewById(R.id.halo_overlay);
 
         mHaloContentView = mInflater.inflate(R.layout.halo_speech, null);
+        mHaloTickerContainer = (RelativeLayout)mHaloContentView.findViewById(R.id.container);
         mHaloTickerContent = mHaloContentView.findViewById(R.id.ticker);
         mHaloTextViewR = (TextView) mHaloTickerContent.findViewById(R.id.bubble_r);
         mHaloTextViewL = (TextView) mHaloTickerContent.findViewById(R.id.bubble_l);
@@ -91,8 +104,33 @@ public class HaloProperties extends FrameLayout {
         mHaloNumber = (TextView) mHaloNumberView.findViewById(R.id.number);
         mHaloNumber.setAlpha(0f);
 
+        mFraction = Settings.System.getFloat(mContext.getContentResolver(),
+                Settings.System.HALO_SIZE, 1.0f);
+        setHaloSize(mFraction);
+
         mHaloOverlayAnimator = new CustomObjectAnimator(this);
-    } 
+    }
+
+    public void setHaloSize(float fraction) {
+
+        final int newBubbleSize = (int)(mContext.getResources().getDimensionPixelSize(R.dimen.halo_bubble_size) * fraction);
+        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(newBubbleSize, newBubbleSize);
+        mHaloBg.setLayoutParams(layoutParams);
+        mHaloIcon.setLayoutParams(layoutParams);
+        mHaloOverlay.setLayoutParams(layoutParams);
+
+        final int newNumberSize = (int)(mContext.getResources().getDimensionPixelSize(R.dimen.halo_number_size) * fraction);
+        final int newNumberTextSize = (int)(mContext.getResources().getDimensionPixelSize(R.dimen.halo_number_text_size) * fraction);
+        LinearLayout.LayoutParams layoutParams2 = new LinearLayout.LayoutParams(newNumberSize, newNumberSize);
+        mHaloNumber.setLayoutParams(layoutParams2);
+        mHaloNumber.setTextSize(TypedValue.COMPLEX_UNIT_PX, newNumberTextSize);
+
+        final int newSpeechTextSize = (int)(mContext.getResources().getDimensionPixelSize(R.dimen.halo_speech_text_size) * fraction);
+        mHaloTextViewR.setTextSize(TypedValue.COMPLEX_UNIT_PX, newSpeechTextSize);
+        mHaloTextViewL.setTextSize(TypedValue.COMPLEX_UNIT_PX, newSpeechTextSize);
+
+        updateResources();
+    }
 
     public void setHaloX(int value) {
         mHaloX = value;
@@ -108,6 +146,29 @@ public class HaloProperties extends FrameLayout {
 
     public int getHaloY() {
         return mHaloY;
+    }
+
+    CustomObjectAnimator msgNumberFlipAnimator = new CustomObjectAnimator(this);
+    CustomObjectAnimator msgNumberAlphaAnimator = new CustomObjectAnimator(this);
+    public void setHaloMessageNumber(int value, boolean alwaysFlip) {
+
+        // Allow transitions only if no overlay is set
+        if (mHaloCurrentOverlay == null) {
+            msgNumberAlphaAnimator.cancel(true);
+            float oldAlpha = mHaloNumber.getAlpha();
+            mHaloNumber.setAlpha(1f);                
+            mHaloNumber.setText((value < 100) ? String.valueOf(value == 0 ? 1 : value) : "+");
+            
+            if (value == 0) {
+                msgNumberAlphaAnimator.animate(ObjectAnimator.ofFloat(mHaloNumber, "alpha", 0f).setDuration(1000),
+                        new DecelerateInterpolator(), null, 1500, null);
+            }
+
+            if (!alwaysFlip && oldAlpha == 1f && (value == mHaloMessageNumber || (value > 99 && mHaloMessageNumber > 99))) return;
+            msgNumberFlipAnimator.animate(ObjectAnimator.ofFloat(mHaloNumber, "rotationY", -180, 0).setDuration(500),
+                        new DecelerateInterpolator(), null);
+        }
+        mHaloMessageNumber = value;
     }
 
     public void setHaloContentAlpha(float value) {
@@ -152,6 +213,12 @@ public class HaloProperties extends FrameLayout {
         if (d != mHaloCurrentOverlay) {
             mHaloOverlay.setImageDrawable(d);
             mHaloCurrentOverlay = d;
+
+            // Fade out number batch
+            if (overlay != Overlay.NONE) {
+                msgNumberAlphaAnimator.animate(ObjectAnimator.ofFloat(mHaloNumber, "alpha", 0f).setDuration(250),
+                        new DecelerateInterpolator(), null);
+            }
         }
 
         mHaloOverlay.setAlpha(overlayAlpha);
@@ -159,6 +226,12 @@ public class HaloProperties extends FrameLayout {
     }
 
     public void updateResources() {
+
+        final int iconSize = (int)(mContext.getResources().getDimensionPixelSize(R.dimen.halo_bubble_size) * mFraction);
+        final int newSize = (int)(getWidth() * 0.9f) - iconSize;
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(newSize, LinearLayout.LayoutParams.WRAP_CONTENT);
+        mHaloTickerContainer.setLayoutParams(layoutParams);
+
         mHaloContentView.measure(MeasureSpec.getSize(mHaloContentView.getMeasuredWidth()),
                 MeasureSpec.getSize(mHaloContentView.getMeasuredHeight()));
         mHaloContentView.layout(0, 0, 0, 0);
